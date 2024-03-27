@@ -4,12 +4,15 @@
 #include <Wire.h>
 #include <LiquidCrystal_I2C.h>
 
-HX711 scale;
-
+extern "C"{
+  void _init_timer();
+  void _init_ADC();
+}
 
 //HX711 scale;
 uint8_t dataPin = 6;
 uint8_t clockPin = 7;
+HX711 scale;
 
 //LCD parmameter initialize
 LiquidCrystal_I2C lcd(0x27, 16, 2); // Set the LCD address to 0x27 for a 16 chars and 2 line display
@@ -19,18 +22,8 @@ float voltage = 0.0;  // Variable to store the battery voltage
 float weight = 0.0;
 
 void setup() {
-  // Set internal reference voltage to Vcc (AVcc)
-  ADMUX |= (1 << REFS0);
-  
-  // Enable ADC, enable ADC interrupt, set ADC Auto Trigger Source to Timer/Counter1 Compare Match A, and set ADC prescaler to 128 (16MHz / 128 = 125kHz)
-  ADCSRA |= (1 << ADEN) | (1 << ADIE) | (1 << ADATE) | (1 << ADPS2) | (1 << ADPS1) | (1 << ADPS0);
-  
-  // Set up Timer/Counter1 for interrupt every 1ms (prescaler 64, CTC mode)
-  TCCR1B |= (1 << WGM12);       // Configure Timer1 for CTC mode
-  OCR1A = 125;                  // Set compare value for 1ms at 16MHz clock (prescaler 64)
-  TIMSK1 |= (1 << OCIE1A);      // Enable Timer1 Compare A Match interrupt
-  TCCR1B |= (1 << CS11) | (1 << CS10);  // Start Timer1 with prescaler 64
-
+  _init_timer();
+  _init_ADC();
   // Enable global interrupts
   sei();
 
@@ -39,13 +32,25 @@ void setup() {
   lcd.begin();
   lcd.backlight();
 
-  Serial.begin(115200);
+  lcd.setCursor(0, 0);
+  lcd.print("Guten Morgen");
+  delay(500);
+  lcd.setCursor(0, 1);
+  lcd.print("Zeig ?");
+  delay(500);
+  lcd.clear();
+  lcd.setCursor(0, 0);
+  lcd.print("HEIL !");
+  lcd.clear();
+
+  /*Serial.begin(115200);*/
 }
 
 void loop() {
   if (scale.is_ready()) {
-    float weight = scale.get_units(1);
-    Serial.println(scale.get_units(1));
+    weight = scale.get_units(1);
+    /*Serial.println(scale.get_units(1));*/
+
      // Clear the LCD display
     lcd.clear();
 
@@ -59,11 +64,8 @@ void loop() {
     lcd.print("Battery = ");
     lcd.print(voltage); // Print the battery voltage value
 
-    delay(500); // Wait for 500 milliseconds
+    delay(300); // Wait for 500 milliseconds
   }
-
- 
-
 }
 
 ISR(TIMER1_COMPA_vect) {
@@ -89,3 +91,20 @@ void _init_Scale(){
   // reset the scale to zero = 0
   scale.tare(20);
 }
+
+// void _init_ADC(){
+//     // Set internal reference voltage to Vcc (AVcc)
+//   ADMUX |= (1 << REFS0);
+//   // Enable ADC, enable ADC interrupt, set ADC Auto Trigger Source to Timer/Counter1 Compare Match A, and set ADC prescaler to 128 (16MHz / 128 = 125kHz)
+//   ADCSRA |= (1 << ADEN) | (1 << ADIE) | (1 << ADATE) | (1 << ADPS2) | (1 << ADPS1) | (1 << ADPS0);
+  
+// }
+
+
+// void _init_timer(){
+//   // Set up Timer/Counter1 for interrupt every 1ms (prescaler 64, CTC mode)
+//   TCCR1B |= (1 << WGM12);       // Configure Timer1 for CTC mode
+//   OCR1A = 125;                  // Set compare value for 1ms at 16MHz clock (prescaler 64)
+//   TIMSK1 |= (1 << OCIE1A);      // Enable Timer1 Compare A Match interrupt
+//   TCCR1B |= (1 << CS11) | (1 << CS10);  // Start Timer1 with prescaler 64
+// }
